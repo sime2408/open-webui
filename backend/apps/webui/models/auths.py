@@ -2,18 +2,12 @@ from pydantic import BaseModel
 from typing import List, Union, Optional
 import time
 import uuid
-import logging
 from peewee import *
 
 from apps.webui.models.users import UserModel, Users
 from utils.utils import verify_password
 
 from apps.webui.internal.db import DB
-
-from config import SRC_LOG_LEVELS
-
-log = logging.getLogger(__name__)
-log.setLevel(SRC_LOG_LEVELS["MODELS"])
 
 from config import SRC_LOG_LEVELS
 
@@ -112,7 +106,7 @@ class AuthsTable:
         role: str = "pending",
         oauth_sub: Optional[str] = None,
     ) -> Optional[UserModel]:
-        log.info("insert_new_auth")
+        print("insert_new_auth")
 
         id = str(uuid.uuid4())
 
@@ -131,7 +125,7 @@ class AuthsTable:
             return None
 
     def authenticate_user(self, email: str, password: str) -> Optional[UserModel]:
-        log.info(f"authenticate_user: {email}")
+        print("authenticate_user", email)
         try:
             auth = Auth.get(Auth.email == email, Auth.active == True)
             if auth:
