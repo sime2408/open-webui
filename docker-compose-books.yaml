@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  open-webui-db:
+    image: chromadb/chroma:latest
+    container_name: open-webui-db
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=TRUE
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./.chroma:/chroma/chroma
+    networks:
+      - openwebui-net
+    restart: always
+    
+  open-webui:
+    build:
+      context: .
+      args:
+        OLLAMA_BASE_URL: '/ollama'
+      dockerfile: Dockerfile
+    container_name: open-webui
+    environment:
+      - WEBUI_NAME=Scrapalot
+      - ENV=dev
+      - WEBUI_SECRET_KEY=WYkkzYgx5yTn42v7
+      - OPENAI_API_KEY=sk
+      - CHROMA_HTTP_HOST=open-webui-db
+      - CHROMA_HTTP_PORT=8000
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - RAG_RELEVANCE_THRESHOLD=0.5
+      - RAG_LOG_LEVEL=DEBUG
+      - RAG_EMBEDDING_MODEL=intfloat/multilingual-e5-large
+      - PYTHONUNBUFFERED=1
+      - USE_CUDA=True
+     # - DATABASE_URL=postgresql://langchain:langchain@localhost:6024/open-webui-db
+    ports:
+      - "4000:8080"
+      - "5678:5678" # debug port
+    volumes:
+      - ./backend/data:/app/backend/data
+    networks:
+      - openwebui-net
+    depends_on:
+      - open-webui-db
+    restart: always
+
+networks:
+  openwebui-net:
+    driver: bridge

@@ -49,7 +49,7 @@
 		template: '',
 		r: 0.0,
 		k: 4,
-		hybrid: false
+		rag_technique: 'semantic_search'
 	};
 
 	const scanHandler = async () => {
@@ -159,7 +159,7 @@
 	const submitHandler = async () => {
 		embeddingModelUpdateHandler();
 
-		if (querySettings.hybrid) {
+		if (querySettings.rag_technique == 'hybrid_search') {
 			rerankingModelUpdateHandler();
 		}
 
@@ -193,11 +193,6 @@
 		if (rerankingConfig) {
 			rerankingModel = rerankingConfig.reranking_model;
 		}
-	};
-
-	const toggleHybridSearch = async () => {
-		querySettings.hybrid = !querySettings.hybrid;
-		querySettings = await updateQuerySettings(localStorage.token, querySettings);
 	};
 
 	onMount(async () => {
@@ -332,6 +327,31 @@
 				</div>
 			</div>
 
+			<div class="flex w-full justify-between">
+				<div class=" self-center text-xs font-medium">{$i18n.t('Search techniques')}</div>
+
+				<div class="flex items-center relative">
+					<select
+						class="dark:bg-gray-900 w-fit pr-8 rounded px-2 p-1 text-xs bg-transparent outline-none text-right"
+						bind:value={querySettings.rag_technique}
+						placeholder="Select an advanced technique"
+						on:change={(e) => {
+						if (e.target.value === '') {
+							querySettings.rag_technique = 'hybrid_search';
+						}
+					}}
+					>
+						<option value="semantic_search">{$i18n.t('Semantic Search')}</option>
+						<option value="hybrid_search">{$i18n.t('Hybrid Search')}</option>
+						<option value="multy_query_search">{$i18n.t('Multy Query')}</option>
+						<option value="rag_fusion_search">{$i18n.t('RAG Fusion')}</option>
+						<option value="decomposition_search">{$i18n.t('Decomposition')}</option>
+						<option value="step_back_search">{$i18n.t('Step back')}</option>
+						<option value="hyde_search">{$i18n.t('HyDE')}</option>
+					</select>
+				</div>
+			</div>
+
 			{#if embeddingEngine === 'openai'}
 				<div class="my-0.5 flex gap-2">
 					<input
@@ -369,23 +389,6 @@
 				</div>
 			{/if}
 
-			<div class=" flex w-full justify-between">
-				<div class=" self-center text-xs font-medium">{$i18n.t('Hybrid Search')}</div>
-
-				<button
-					class="p-1 px-3 text-xs flex rounded transition"
-					on:click={() => {
-						toggleHybridSearch();
-					}}
-					type="button"
-				>
-					{#if querySettings.hybrid === true}
-						<span class="ml-2 self-center">{$i18n.t('On')}</span>
-					{:else}
-						<span class="ml-2 self-center">{$i18n.t('Off')}</span>
-					{/if}
-				</button>
-			</div>
 		</div>
 
 		<hr class=" dark:border-gray-850 my-1" />
@@ -488,7 +491,7 @@
 				)}
 			</div>
 
-			{#if querySettings.hybrid === true}
+			{#if querySettings.rag_technique === 'hybrid_search'}
 				<div class=" ">
 					<div class=" mb-2 text-sm font-medium">{$i18n.t('Reranking Model')}</div>
 

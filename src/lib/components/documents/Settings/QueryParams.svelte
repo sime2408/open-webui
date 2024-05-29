@@ -27,7 +27,7 @@
 		template: '',
 		r: 0.0,
 		k: 4,
-		hybrid: false
+		rag_technique: 'semantic_search'
 	};
 
 	const submitHandler = async () => {
@@ -66,7 +66,7 @@
 					</div>
 				</div>
 
-				{#if querySettings.hybrid === true}
+				{#if querySettings.rag_technique === 'hybrid_search'}
 					<div class="flex w-full">
 						<div class=" self-center text-xs font-medium min-w-fit">
 							{$i18n.t('Minimum Score')}
@@ -88,7 +88,7 @@
 				{/if}
 			</div>
 
-			{#if querySettings.hybrid === true}
+			{#if querySettings.rag_technique === 'hybrid_search'}
 				<div class="mt-2 mb-1 text-xs text-gray-400 dark:text-gray-500">
 					{$i18n.t(
 						'Note: If you set a minimum score, the search will only return documents with a score greater than or equal to the minimum score.'

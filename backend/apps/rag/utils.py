@@ -10,6 +10,7 @@ from apps.ollama.main import (
 )
 
 from huggingface_hub import snapshot_download
+from langchain_community.chat_models import ChatOpenAI
 
 from langchain_core.documents import Document
 from langchain_community.retrievers import BM25Retriever
@@ -21,13 +22,50 @@ from langchain.retrievers import (
 from typing import Optional
 
 from utils.misc import get_last_user_message, add_or_update_system_message
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from langchain.load import dumps, loads
+
 from config import SRC_LOG_LEVELS, CHROMA_CLIENT
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["RAG"])
 
+# Multi Query: Different Perspectives
+template = """You are an AI language model assistant. Your task is to generate five 
+different versions of the given user question to retrieve relevant documents from a vector 
+database. By generating multiple perspectives on the user question, your goal is to help
+the user overcome some of the limitations of the distance-based similarity search. 
+Provide these alternative questions separated by newlines. Original question: {question}"""
+prompt_perspectives = ChatPromptTemplate.from_template(template)
 
-def query_doc(
+generate_queries = (
+        prompt_perspectives
+        | ChatOpenAI(temperature=0)
+        | StrOutputParser()
+        | (lambda x: x.split("\n"))
+)
+
+
+def get_unique_union(documents: list[list]):
+    """ Unique union of retrieved docs """
+    # Flatten list of lists, and convert each Document to string
+    flattened_docs = [dumps(doc) for sublist in documents for doc in sublist]
+    # Get unique documents
+    unique_docs = list(set(flattened_docs))
+    # Return
+    return [loads(doc) for doc in unique_docs]
+def get_unique_union(documents: list[list]):
+    """ Unique union of retrieved docs """
+    # Flatten list of lists, and convert each Document to string
+    flattened_docs = [dumps(doc) for sublist in documents for doc in sublist]
+    # Get unique documents
+    unique_docs = list(set(flattened_docs))
+    # Return
+    return [loads(doc) for doc in unique_docs]
+
+
+def query_doc_with_semantic_search(
     collection_name: str,
     query: str,
     embedding_function,
@@ -42,7 +80,7 @@ def query_doc(
             n_results=k,
         )
 
-        log.info(f"query_doc:result {result}")
+        log.info(f"query_doc_with_semantic_search:result {result}")
         return result
     except Exception as e:
         raise e
@@ -100,6 +138,33 @@ def query_doc_with_hybrid_search(
         raise e
 
 
+def query_doc_with_multy_query_search(
+        collection_name: str,
+        query: str,
+        k: int,
+        embedding_function
+):
+    try:
+        collection = CHROMA_CLIENT.get_collection(name=collection_name)
+        queries = generate_queries.invoke({"question": query})
+
+        all_results = []
+        for q in queries:
+            query_embeddings = embedding_function(q)
+
+            result = collection.query(
+                query_embeddings=[query_embeddings],
+                n_results=k,
+            )
+            all_results.append(result)
+
+        merged_results = merge_and_sort_query_results(all_results, k)
+        log.info(f"query_doc_with_multy_query_search:result {merged_results}")
+        return merged_results
+    except Exception as e:
+        raise e
+
+
 def merge_and_sort_query_results(query_results, k, reverse=False):
     # Initialize lists to store combined data
     combined_distances = []
@@ -150,7 +215,7 @@ def query_collection(
     results = []
     for collection_name in collection_names:
         try:
-            result = query_doc(
+            result = query_doc_with_semantic_search(
                 collection_name=collection_name,
                 query=query,
                 k=k,
@@ -243,7 +308,7 @@ def get_rag_context(
     k,
     reranking_function,
     r,
-    hybrid_search,
+    rag_technique,
 ):
     log.debug(f"files: {files} {messages} {embedding_function} {reranking_function}")
     query = get_last_user_message(messages)
@@ -269,7 +334,7 @@ def get_rag_context(
             if file["type"] == "text":
                 context = file["content"]
             else:
-                if hybrid_search:
+                if rag_technique == 'hybrid_search':
                     context = query_collection_with_hybrid_search(
                         collection_names=collection_names,
                         query=query,

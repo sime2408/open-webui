@@ -568,7 +568,7 @@ class ChatCompletionMiddleware(BaseHTTPMiddleware):
                         k=rag_app.state.config.TOP_K,
                         reranking_function=rag_app.state.sentence_transformer_rf,
                         r=rag_app.state.config.RELEVANCE_THRESHOLD,
-                        hybrid_search=rag_app.state.config.ENABLE_RAG_HYBRID_SEARCH,
+                        rag_technique=rag_app.state.config.RAG_SEARCH_TECHNIQUE,
                     )
                     if rag_context:
                         context += ("\n" if context != "" else "") + rag_context

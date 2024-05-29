@@ -907,10 +907,10 @@ RAG_RELEVANCE_THRESHOLD = PersistentConfig(
     float(os.environ.get("RAG_RELEVANCE_THRESHOLD", "0.0")),
 )
 
-ENABLE_RAG_HYBRID_SEARCH = PersistentConfig(
-    "ENABLE_RAG_HYBRID_SEARCH",
-    "rag.enable_hybrid_search",
-    os.environ.get("ENABLE_RAG_HYBRID_SEARCH", "").lower() == "true",
+RAG_SEARCH_TECHNIQUE = PersistentConfig(
+    "RAG_SEARCH_TECHNIQUE",
+    "rag.rag_technique",
+    os.environ.get("RAG_SEARCH_TECHNIQUE", "semantic_search"),
 )
 
 ENABLE_RAG_WEB_LOADER_SSL_VERIFICATION = PersistentConfig(

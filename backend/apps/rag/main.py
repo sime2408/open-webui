@@ -62,7 +62,7 @@ from apps.webui.models.files import (
 from apps.rag.utils import (
     get_model_path,
     get_embedding_function,
-    query_doc,
+    query_doc_with_semantic_search,
     query_doc_with_hybrid_search,
     query_collection,
     query_collection_with_hybrid_search,
@@ -99,7 +99,7 @@ from config import (
     RAG_EMBEDDING_MODEL,
     RAG_EMBEDDING_MODEL_AUTO_UPDATE,
     RAG_EMBEDDING_MODEL_TRUST_REMOTE_CODE,
-    ENABLE_RAG_HYBRID_SEARCH,
+    RAG_SEARCH_TECHNIQUE,
     ENABLE_RAG_WEB_LOADER_SSL_VERIFICATION,
     RAG_RERANKING_MODEL,
     PDF_EXTRACT_IMAGES,
@@ -133,6 +133,8 @@ from config import (
 
 from constants import ERROR_MESSAGES
 
+from backend.apps.rag.utils import query_doc_with_multy_query_search
+
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["RAG"])
 
@@ -143,7 +145,7 @@ app.state.config = AppConfig()
 app.state.config.TOP_K = RAG_TOP_K
 app.state.config.RELEVANCE_THRESHOLD = RAG_RELEVANCE_THRESHOLD
 
-app.state.config.ENABLE_RAG_HYBRID_SEARCH = ENABLE_RAG_HYBRID_SEARCH
+app.state.config.RAG_SEARCH_TECHNIQUE = RAG_SEARCH_TECHNIQUE
 app.state.config.ENABLE_RAG_WEB_LOADER_SSL_VERIFICATION = (
     ENABLE_RAG_WEB_LOADER_SSL_VERIFICATION
 )
@@ -543,7 +545,7 @@ async def get_query_settings(user=Depends(get_admin_user)):
         "template": app.state.config.RAG_TEMPLATE,
         "k": app.state.config.TOP_K,
         "r": app.state.config.RELEVANCE_THRESHOLD,
-        "hybrid": app.state.config.ENABLE_RAG_HYBRID_SEARCH,
+        "rag_technique": app.state.config.RAG_SEARCH_TECHNIQUE,
     }
 
 
@@ -551,7 +553,7 @@ class QuerySettingsForm(BaseModel):
     k: Optional[int] = None
     r: Optional[float] = None
     template: Optional[str] = None
-    hybrid: Optional[bool] = None
+    rag_technique: Optional[str] = None
 
 
 @app.post("/query/settings/update")
@@ -563,15 +565,14 @@ async def update_query_settings(
     )
     app.state.config.TOP_K = form_data.k if form_data.k else 4
     app.state.config.RELEVANCE_THRESHOLD = form_data.r if form_data.r else 0.0
-    app.state.config.ENABLE_RAG_HYBRID_SEARCH = (
-        form_data.hybrid if form_data.hybrid else False
-    )
+    app.state.config.RAG_SEARCH_TECHNIQUE = form_data.rag_technique if form_data.rag_technique else 'semantic_search'
+
     return {
         "status": True,
         "template": app.state.config.RAG_TEMPLATE,
         "k": app.state.config.TOP_K,
         "r": app.state.config.RELEVANCE_THRESHOLD,
-        "hybrid": app.state.config.ENABLE_RAG_HYBRID_SEARCH,
+        "rag_technique": app.state.config.RAG_SEARCH_TECHNIQUE,
     }
 
 
@@ -580,7 +581,7 @@ class QueryDocForm(BaseModel):
     query: str
     k: Optional[int] = None
     r: Optional[float] = None
-    hybrid: Optional[bool] = None
+    rag_technique: Optional[str] = None
 
 
 @app.post("/query/doc")
@@ -589,24 +590,46 @@ def query_doc_handler(
     user=Depends(get_verified_user),
 ):
     try:
-        if app.state.config.ENABLE_RAG_HYBRID_SEARCH:
-            return query_doc_with_hybrid_search(
-                collection_name=form_data.collection_name,
-                query=form_data.query,
-                embedding_function=app.state.EMBEDDING_FUNCTION,
-                k=form_data.k if form_data.k else app.state.config.TOP_K,
-                reranking_function=app.state.sentence_transformer_rf,
-                r=(
-                    form_data.r if form_data.r else app.state.config.RELEVANCE_THRESHOLD
-                ),
-            )
+        co_name = form_data.collection_name
+        u_query = form_data.query
+        k_value = form_data.k or app.state.config.TOP_K
+        r_value = form_data.r or app.state.config.RELEVANCE_THRESHOLD
+        e_funct = app.state.EMBEDDING_FUNCTION
+        r_techn = form_data.rag_technique
+        r_funct = app.state.sentence_transformer_rf
+
+        search_functions = {
+            'semantic_search': lambda: query_doc_with_semantic_search(
+                collection_name=co_name,
+                query=u_query,
+                embedding_function=e_funct,
+                k=k_value,
+            ),
+            'hybrid_search': lambda: query_doc_with_hybrid_search(
+                collection_name=co_name,
+                query=u_query,
+                embedding_function=e_funct,
+                k=k_value,
+                reranking_function=r_funct,
+                r=r_value
+            ),
+            'multy_query_search': lambda: query_doc_with_multy_query_search(
+                collection_name=co_name,
+                query=u_query,
+                embedding_function=e_funct,
+                k=k_value
+            ),
+            'rag_fusion_search': lambda: (_ for _ in ()).throw(NotImplementedError),
+            'decomposition_search': lambda: (_ for _ in ()).throw(NotImplementedError),
+            'step_back_search': lambda: (_ for _ in ()).throw(NotImplementedError),
+            'hyde_search': lambda: (_ for _ in ()).throw(NotImplementedError)
+        }
+
+        if r_techn in search_functions:
+            return search_functions[r_techn]()
         else:
-            return query_doc(
-                collection_name=form_data.collection_name,
-                query=form_data.query,
-                embedding_function=app.state.EMBEDDING_FUNCTION,
-                k=form_data.k if form_data.k else app.state.config.TOP_K,
-            )
+            raise NotImplementedError
+
     except Exception as e:
         log.exception(e)
         raise HTTPException(
@@ -620,7 +643,7 @@ class QueryCollectionsForm(BaseModel):
     query: str
     k: Optional[int] = None
     r: Optional[float] = None
-    hybrid: Optional[bool] = None
+    rag_technique: Optional[str] = None
 
 
 @app.post("/query/collection")
@@ -629,7 +652,7 @@ def query_collection_handler(
     user=Depends(get_verified_user),
 ):
     try:
-        if app.state.config.ENABLE_RAG_HYBRID_SEARCH:
+        if form_data.rag_technique == 'hybrid_search':
             return query_collection_with_hybrid_search(
                 collection_names=form_data.collection_names,
                 query=form_data.query,
@@ -638,7 +661,7 @@ def query_collection_handler(
                 reranking_function=app.state.sentence_transformer_rf,
                 r=(
                     form_data.r if form_data.r else app.state.config.RELEVANCE_THRESHOLD
-                ),
+                )
             )
         else:
             return query_collection(
