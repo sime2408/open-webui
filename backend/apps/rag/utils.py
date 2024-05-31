@@ -252,6 +252,26 @@ def query_collection_with_hybrid_search(
     return merge_and_sort_query_results(results, k=k, reverse=True)
 
 
+def query_collection_with_multy_query_search(
+        collection_names: List[str],
+        query: str,
+        embedding_function,
+        k: int):
+    results = []
+    for collection_name in collection_names:
+        try:
+            result = query_doc_with_multy_query_search(
+                collection_name=collection_name,
+                query=query,
+                embedding_function=embedding_function,
+                k=k,
+            )
+            results.append(result)
+        except:
+            pass
+    return merge_and_sort_query_results(results, k=k, reverse=True)
+
+
 def rag_template(template: str, context: str, query: str):
     template = template.replace("[context]", context)
     template = template.replace("[query]", query)
@@ -342,6 +362,13 @@ def get_rag_context(
                         k=k,
                         reranking_function=reranking_function,
                         r=r,
+                    )
+                elif rag_technique == 'multy_query_search':
+                    context = query_collection_with_multy_query_search(
+                        collection_names=collection_names,
+                        query=query,
+                        embedding_function=embedding_function,
+                        k=k
                     )
                 else:
                     context = query_collection(
