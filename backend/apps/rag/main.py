@@ -66,6 +66,9 @@ from apps.rag.utils import (
     query_doc_with_hybrid_search,
     query_collection,
     query_collection_with_hybrid_search,
+    query_doc_with_multy_query_search,
+    query_collection_with_multy_query_search,
+    search_web,
 )
 
 from apps.rag.search.brave import search_brave
@@ -132,8 +135,6 @@ from config import (
 )
 
 from constants import ERROR_MESSAGES
-
-from backend.apps.rag.utils import query_doc_with_multy_query_search, query_collection_with_multy_query_search
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["RAG"])
