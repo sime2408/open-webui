@@ -133,7 +133,7 @@ from config import (
 
 from constants import ERROR_MESSAGES
 
-from backend.apps.rag.utils import query_doc_with_multy_query_search
+from backend.apps.rag.utils import query_doc_with_multy_query_search, query_collection_with_multy_query_search
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["RAG"])
@@ -652,6 +652,7 @@ def query_collection_handler(
     user=Depends(get_verified_user),
 ):
     try:
+        # TODO: implement all other search techniques
         if form_data.rag_technique == 'hybrid_search':
             return query_collection_with_hybrid_search(
                 collection_names=form_data.collection_names,
@@ -662,6 +663,13 @@ def query_collection_handler(
                 r=(
                     form_data.r if form_data.r else app.state.config.RELEVANCE_THRESHOLD
                 )
+            )
+        elif form_data.rag_technique == 'multy_query_search':
+            return query_collection_with_multy_query_search(
+                collection_names=form_data.collection_names,
+                query=form_data.query,
+                embedding_function=app.state.EMBEDDING_FUNCTION,
+                k=form_data.k if form_data.k else app.state.config.TOP_K,
             )
         else:
             return query_collection(
