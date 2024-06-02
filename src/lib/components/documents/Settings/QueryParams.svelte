@@ -27,7 +27,7 @@
 		template: '',
 		r: 0.0,
 		k: 4,
-		rag_technique: 'semantic_search'
+		rag_technique: ''
 	};
 
 	const submitHandler = async () => {

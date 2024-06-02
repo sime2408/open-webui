@@ -10,7 +10,7 @@ from apps.ollama.main import (
 )
 
 from huggingface_hub import snapshot_download
-from langchain_community.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 
 from langchain_core.documents import Document
 from langchain_community.retrievers import BM25Retriever
@@ -33,7 +33,7 @@ log.setLevel(SRC_LOG_LEVELS["RAG"])
 
 generate_multy_queries = (
     ChatPromptTemplate.from_template(MULTY_QUERY_RAG_TEMPLATE)
-    | ChatOpenAI(temperature=0)
+    | ChatOpenAI(temperature=0.2)
     | StrOutputParser()
     | (lambda x: x.split("\n"))
 )
