@@ -68,7 +68,6 @@ from apps.rag.utils import (
     query_collection_with_hybrid_search,
     query_doc_with_multy_query_search,
     query_collection_with_multy_query_search,
-    search_web,
 )
 
 from apps.rag.search.brave import search_brave
