@@ -26,7 +26,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.load import dumps, loads
 
-from config import SRC_LOG_LEVELS, CHROMA_CLIENT, MULTY_QUERY_RAG_TEMPLATE,
+from config import SRC_LOG_LEVELS, CHROMA_CLIENT, MULTY_QUERY_RAG_TEMPLATE
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["RAG"])

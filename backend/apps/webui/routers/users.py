@@ -7,6 +7,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 import time
 import uuid
+import logging
 
 from apps.webui.models.users import (
     UserModel,
@@ -25,6 +26,11 @@ from utils.utils import (
     get_admin_user,
 )
 from constants import ERROR_MESSAGES
+
+from config import SRC_LOG_LEVELS
+
+log = logging.getLogger(__name__)
+log.setLevel(SRC_LOG_LEVELS["MODELS"])
 
 router = APIRouter()
 
@@ -214,7 +220,7 @@ async def update_user_by_id(
 
         if form_data.password:
             hashed = get_password_hash(form_data.password)
-            print(hashed)
+            log.debug(f"hashed: {hashed}")
             Auths.update_user_password_by_id(user_id, hashed)
 
         Auths.update_email_by_id(user_id, form_data.email.lower())
